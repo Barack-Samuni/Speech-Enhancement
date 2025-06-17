@@ -11,10 +11,10 @@ def common_length(sig1,sig2):
     return min_len
 
 sig, fs1 = sf.read(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\אותות\races.wav")
-noise, fs2=sf.read(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\רעשים\car-street-noise-68104.wav")
-if(noise.ndim==2):
+noise, fs2=sf.read(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\רעשים\india-street-traffic-horns-voices-calcutta-10-61970 (online-audio-converter.com).wav")
+if(noise.ndim>=1):
     noise = noise.mean(axis=1)
-if(sig.ndim==2):    
+if(sig.ndim>=1):    
     sig=sig.mean(axis=1)
 if fs1>fs2:
     sig,fs1=resample_fs(sig,fs_old=fs1,fs_new=fs2)
@@ -26,7 +26,7 @@ sig=sig[:coomon_len]
 noise=noise[:coomon_len]*3
 final_sig=sig+noise
 file_add=r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\הרצת ניסויי"
-sf.write(file_add+r"\full_sig_noise_sig.wav",final_sig, fs1)
-sf.write(file_add+r"\exp_sig.wav",sig,fs1)
-sf.write(file_add+r"\exp_noise.wav",noise,fs1)
+sf.write(file_add+r"\full_sig_noise_sig2.wav",final_sig, fs1)
+sf.write(file_add+r"\exp_sig2.wav",sig,fs1)
+sf.write(file_add+r"\exp_noise2.wav",noise,fs1)
 print("Succsseeded")

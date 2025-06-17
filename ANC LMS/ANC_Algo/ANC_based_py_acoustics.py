@@ -4,6 +4,11 @@ import soundfile as sf
 import scipy.signal as sp
 import matplotlib.pyplot as plt
 
+def resample_fs(sig,fs_old,fs_new):
+    num_samples = int(len(sig) * fs_new / fs_old)
+    resampled_sig = sp.resample(sig, num_samples)
+    return resampled_sig,fs_new
+
 # spectral argsp
 WIN_DUR = 0.064
 HOP_FRAC = 0.2
@@ -17,13 +22,16 @@ def create_spectogram(sig,fs):
     return f1,t1,psd_sig
 
 
-def paint_spectogram(psd,ax):
-    ax.imshow(10*np.log10(psd),origin='lower',aspect='auto',cmap='inferno',vmin=-90,vmax=-20)
-
+def paint_spectogram(psd,ax,t,f):
+    ax.imshow(10*np.log10(psd),origin='lower',aspect='auto',cmap='inferno',vmin=-90,vmax=-20,)
+# extent=[t[0], t[-1], f[0], f[-1]]
 def plot_spectograms_of_all(total_sig,noise,cleaned_sig,fs1,kmin=0,kmax=200):
+    """ create Specotgram to all 3 signals based on the signals, sample rate"""
     f1,t1,psd_total=create_spectogram(total_sig,fs1)
     f2,t2,psd_noise=create_spectogram(noise,fs1)
     f3,t3,psd_clean=create_spectogram(cleaned_sig,fs1)
+    freqs=[f1,f2,f3]
+    times=[t1,t2,t3]
     dict_psds = {
     "Before ANC": psd_total,
     "Only Noise": psd_noise,
@@ -37,14 +45,18 @@ def plot_spectograms_of_all(total_sig,noise,cleaned_sig,fs1,kmin=0,kmax=200):
     fig,ax=plt.subplots(length_psds,1)
     for i in range(length_psds):
         ax[i].set_ylim([kmin,kmax])
-        paint_spectogram(psds[i],ax[i])
+        paint_spectogram(psds[i],ax[i], times[i], freqs[i])
         ax[i].set_title(psds_titles[i])
     plt.tight_layout()
     plt.show()
 
 def NLMS_calculation(total_sig,noise,fs1,fs2):
+    """ NLMS Calc"""
+    if fs1>fs2:
+        sig,fs1=resample_fs(sig,fs_old=fs1,fs_new=fs2)
 
-    assert fs1 == fs2, f"Sampling rates do not match: fs1={fs1}, fs2={fs2}"
+    elif fs1<fs2:
+        noise,fs2=resample_fs(sig,fs_old=fs2,fs_new=fs1)
 
     # Use only first channel if stereo
     if total_sig.ndim > 1:
@@ -62,14 +74,14 @@ def NLMS_calculation(total_sig,noise,fs1,fs2):
     l = NLMS(filter_len, mu=0.01)
     e = np.zeros(min_len)
 
-    # Adaptive filtering loop
+    # Adaptive filtering loop- update weights for each sample
     for n in range(min_len):
         l.update(noise[n], total_sig[n])
         y = np.dot(l.w, l.x)
         e[n] = total_sig[n] - y  # cleaned signal
 
     # Save output
-    sf.write(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\הרצת ניסויי\Anc_cleaned_output.wav", e, fs1)
+    sf.write(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\הרצת ניסויי\Anc_cleaned_output2.wav", e, fs1)
     print("Anc Completed and saved!")
     return e
 
@@ -77,8 +89,8 @@ def NLMS_calculation(total_sig,noise,fs1,fs2):
 
 def main():
         # Load input signals
-    total_sig, fs1 = sf.read(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\הרצת ניסויי\total_sig.wav")
-    noise, fs2  = sf.read(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\הרצת ניסויי\processed_noise.wav")
+    total_sig, fs1 = sf.read(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\הרצת ניסויי\full_sig_noise_sig2.wav")
+    noise, fs2  = sf.read(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\הרצת ניסויי\exp_noise2.wav")
     cleaned_sig=NLMS_calculation(total_sig,noise,fs1,fs2)
     plot_spectograms_of_all(total_sig,noise,cleaned_sig,fs1)
 

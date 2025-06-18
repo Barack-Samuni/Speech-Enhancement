@@ -81,7 +81,7 @@ def NLMS_calculation(total_sig,noise,fs1,fs2):
         e[n] = total_sig[n] - y  # cleaned signal
 
     # Save output
-    sf.write(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\הרצת ניסויי\Anc_cleaned_output2.wav", e, fs1)
+    sf.write(r"C:\Users\galon\Documents\projects\Wavs\exp1\Anc_cleaned_output1.wav", e, fs1)
     print("Anc Completed and saved!")
     return e
 
@@ -89,8 +89,8 @@ def NLMS_calculation(total_sig,noise,fs1,fs2):
 
 def main():
         # Load input signals
-    total_sig, fs1 = sf.read(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\הרצת ניסויי\full_sig_noise_sig2.wav")
-    noise, fs2  = sf.read(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\הרצת ניסויי\exp_noise2.wav")
+    total_sig, fs1 = sf.read(r"C:\Users\galon\Documents\projects\Wavs\exp1\full_sig_noise_sig2.wav")
+    noise, fs2  = sf.read(r"C:\Users\galon\Documents\projects\Wavs\exp1\exp_noise2.wav")
     cleaned_sig=NLMS_calculation(total_sig,noise,fs1,fs2)
     plot_spectograms_of_all(total_sig,noise,cleaned_sig,fs1)
 

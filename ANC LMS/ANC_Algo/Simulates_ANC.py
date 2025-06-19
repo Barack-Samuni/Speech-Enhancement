@@ -1,7 +1,7 @@
 from pathlib import Path
 import soundfile as sf
 import numpy as np
-from helping_methods_classes import SigArgs
+from helping_methods_classes import SigArgs,generate_full_sig,create_folder
 
 
 def get_noises_by_folder(folder:Path):

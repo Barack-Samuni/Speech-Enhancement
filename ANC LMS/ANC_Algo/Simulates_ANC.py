@@ -2,7 +2,8 @@ from pathlib import Path
 import soundfile as sf
 import numpy as np
 from helping_methods_classes import SigArgs,generate_full_sig,create_folder
-
+from NLMS_based_py_acoustics import NLMS_calculation
+from plots import plot_spectograms_of_all
 
 def get_noises_by_folder(folder:Path):
       """
@@ -37,9 +38,9 @@ def get_one_sig(folder_sig:Path):
     printfiles(wav_files)
     try:
       index=int(input(f"Enter index of desired signal between 0 to {n-1}"))
-    except ValueError as e :
+    except ValueError:
         print("invalid value- must be integer")
-        raise e
+        raise ValueError
            
     if not (0 <= index < n):
       print("Index must be in the right limits")
@@ -51,12 +52,48 @@ def get_one_sig(folder_sig:Path):
       return SigArgs(sig, fs, wav_files[index].stem)
 
 
+def save_file_in_folder(folder_path:Path,sig:SigArgs):
+  file_name=sig.name+".wav"
+  file_path_saving=folder_path/file_name
+  data_sig=sig.sig_array
+  fs_sig=sig.fs
+  sf.write(folder_path,data_sig,fs_sig)
+  print("Full signal is saved")
+
+def running_NLMS(list_noise:list[SigArgs],sig:SigArgs,folder_total_sigs:Path,folder_anc_sigs:Path):
+   for noise in list_noise:
+      full_signal=generate_full_sig(sig_object=sig,noise_object=noise)
+      save_file_in_folder(folder_total_sigs,full_signal)
+      text_full_path=f"{folder_total_sigs}/{full_signal.name}.txt"
+      with open(text_full_path, 'w') as file:
+         file.write(f"Anc with {sig.name}-NLMS Method")
+         file.write("\n")
+         file.write(f"Signal fs: {full_signal.fs}")
+      anc_signal,fs1=NLMS_calculation(total_sig=full_signal.sig_array,noise=noise.sig_array,fs1=full_signal.fs,fs2=noise.fs,txt_file=text_full_path)
+      anc_object=SigArgs(anc_signal,fs1,f"Anc_{full_signal.name}")
+      save_file_in_folder(folder_anc_sigs,anc_object)
+      plot_spectograms_of_all(total_sig=full_signal.sig_array,noise=noise.sig_array,cleaned_sig=anc_object.sig_array)
+
+
+
+      
+
+
 def main():
-  folder_path_noise=Path(r"C:\Users\Omer\Documents\Projects\WAVS\ANC WAVS\Noises")#USER INPUT OF NOISES FOLDER
-  folder_path_sig=Path(r"C:\Users\galon\Documents\projects\Wavs\Signals")#Giving the signal Folder
+  folder_path=r"C:\Users\galon\Documents\projects\Wavs"
+  #USER INPUT of audio recs path
+  folder_path_noise=Path(f"{folder_path}/Noises")
+  folder_path_sig=Path(f"{folder_path}/Signals")#Giving the signal Folder
 
   noise_list=get_noises_by_folder(folder=folder_path_noise)
-  sig=get_one_sig(folder_sig=folder_path_sig)
+  original_sig=get_one_sig(folder_sig=folder_path_sig)
+  folder_total_sigs=(create_folder(Path(folder_path),"Total_noised_Sigs"))
+  folder_anc_sigs=(create_folder(Path(folder_path),"Anc_signals"))
+  running_NLMS(noise_list,original_sig,folder_total_sigs,folder_anc_sigs)
+
+
+
+  
    
   
 

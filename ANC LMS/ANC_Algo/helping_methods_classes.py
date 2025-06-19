@@ -1,13 +1,13 @@
 import numpy as np
 import soundfile as sf
 from pathlib import Path
-from scipy.signal import resample
-
+import scipy.signal as sp
+import matplotlib.pyplot as plt
 
 """Sig arguenments helpful for output uses"""
 class SigArgs:
-    def __init__(self, noise, fs, name):
-        self._sig_array = noise
+    def __init__(self, sig, fs, name):
+        self._sig_array = sig
         self._fs = fs
         self._sig_name = name
 
@@ -37,7 +37,7 @@ class SigArgs:
 
 def resample_fs(sig,fs_old,fs_new):
     num_samples = int(len(sig) * fs_new / fs_old)
-    resampled_sig = resample(sig, num_samples)
+    resampled_sig = sp.resample(sig, num_samples)
     return resampled_sig,fs_new
 
 def common_length(sig1,sig2):
@@ -90,12 +90,13 @@ def generate_full_sig(sig_object:SigArgs,noise_object:SigArgs,noise_lin_amp:floa
     final_sig=sig+noise
     sig_object.sig_array=sig
     noise_object.sig_array=noise
+    return SigArgs(final_sig,fs1,f"{sig_object.name}_with_{noise_object.name}")
 
 
-    file_add=r"C:\Users\galon\Documents\projects\Wavs\exp1"
-    sf.write(file_add+r"\full_sig_noise_sig2.wav",final_sig, fs1)
-    sf.write(file_add+r"\exp_sig2.wav",sig,fs1)
-    sf.write(file_add+r"\exp_noise2.wav",noise,fs1)
+    # file_add=r"C:\Users\galon\Documents\projects\Wavs\exp1"
+    # sf.write(file_add+r"\full_sig_noise_sig2.wav",final_sig, fs1)
+    # sf.write(file_add+r"\exp_sig2.wav",sig,fs1)
+    # sf.write(file_add+r"\exp_noise2.wav",noise,fs1)
    
 
 

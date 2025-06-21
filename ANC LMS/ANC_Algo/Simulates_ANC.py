@@ -3,7 +3,7 @@ import soundfile as sf
 import numpy as np
 from helping_methods_classes import SigArgs,generate_full_sig,create_folder
 from NLMS_based_py_acoustics import NLMS_calculation
-from plots import plot_spectograms_of_all,signal_noise_comparison
+from plots import plot_spectograms_of_all,signal_noise_comparison,bandpower_statics
 
 def get_noises_by_folder(folder:Path):
       """
@@ -60,30 +60,64 @@ def save_file_in_folder(folder_path:Path,sig:SigArgs):
   sf.write(folder_path,data_sig,fs_sig)
   print("Full signal is saved")
 
-def running_NLMS(list_noise:list[SigArgs],sig:SigArgs,folder_total_sigs:Path,folder_anc_sigs:Path):
-   for noise in list_noise:
-      full_signal=generate_full_sig(sig_object=sig,noise_object=noise)
-      save_file_in_folder(folder_total_sigs,full_signal)
-      text_full_path=f"{folder_anc_sigs}/{full_signal.name}.txt"
-    
-      with open(text_full_path, 'w') as file:
-         file.write(f"Anc with {sig.name}-NLMS Method")
-         file.write("\n")
-         file.write(f"Signal fs: {full_signal.fs}")
-      anc_signal,fs1=NLMS_calculation(total_sig=full_signal.sig_array,noise=noise.sig_array,fs1=full_signal.fs,fs2=noise.fs,txt_file=text_full_path)
-      anc_object=SigArgs(anc_signal,fs1,f"Anc_{full_signal.name}")
-      save_file_in_folder(folder_anc_sigs,anc_object)
-      plot_spectograms_of_all(total_sig=full_signal.sig_array,noise=noise.sig_array,cleaned_sig=anc_object.sig_array)
-      freqs_vec,snr_before,snr_after,bp_snr_before,bp_snr_after=signal_noise_comparison(sig=sig.sig_array,noise=noise.sig_array,fs=fs1)
-      with open(text_full_path, 'a') as file:
-         file.write(f"SNR band_power before ANC {bp_snr_before}")
-         file.write("\n")
-         file.write(f"SNR band_power after ANC {bp_snr_after}")
+def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Path, folder_anc_sigs: Path):
+    data_bp_before = np.array([])
+    data_bp_after = np.array([])
+    sig_names_array = np.array([])
+    fmin = 300
+    fmax = 5000
 
+    for noise in list_noise:
+        full_signal = generate_full_sig(sig_object=sig, noise_object=noise)
+        save_file_in_folder(folder_total_sigs, full_signal)
+        text_full_path = f"{folder_anc_sigs}/{full_signal.name}.txt"
 
+        with open(text_full_path, 'w') as file:
+            file.write(f"Anc with {sig.name}-NLMS Method\n")
+            file.write(f"Signal fs: {full_signal.fs}\n")
 
-      
+        anc_signal, fs1 = NLMS_calculation(
+            total_sig=full_signal.sig_array,
+            noise=noise.sig_array,
+            fs1=full_signal.fs,
+            fs2=noise.fs,
+            txt_file=text_full_path
+        )
 
+        sig_names_array = np.append(sig_names_array, full_signal.name)
+        anc_object = SigArgs(anc_signal, fs1, f"Anc_{full_signal.name}")
+        save_file_in_folder(folder_anc_sigs, anc_object)
+        plot_spectograms_of_all(
+            total_sig=full_signal.sig_array,
+            noise=noise.sig_array,
+            cleaned_sig=anc_object.sig_array
+        )
+
+        _, _, _, bp_snr_before, bp_snr_after = signal_noise_comparison(
+            sig=sig.sig_array,
+            noise=noise.sig_array,
+            anc_sig=anc_signal,
+            fs=fs1,
+            fmin=fmin,
+            fmax=fmax
+        )
+
+        data_bp_before = np.append(data_bp_before, bp_snr_before)
+        data_bp_after = np.append(data_bp_after, bp_snr_after)
+
+        with open(text_full_path, 'a') as file:
+            file.write("based on welch method of PSDs:\n")
+            file.write(f"SNR band_power before ANC {bp_snr_before}\n")
+            file.write(f"SNR band_power after ANC {bp_snr_after}\n")
+
+    bandpower_statics(
+        band_power_before=data_bp_before,
+        band_power_after=data_bp_after,
+        fmin=fmin,
+        fmax=fmax,
+        signals_name_before=sig_names_array,
+        signals_name_after=sig_names_array
+    )
 
 def main():
   root_folder_path=r"C:\Users\galon\Documents\projects\Wavs"
@@ -96,12 +130,6 @@ def main():
   folder_total_sigs=(create_folder(Path(root_folder_path),"Total_noised_Sigs"))
   folder_anc_sigs=(create_folder(Path(root_folder_path),"Anc_signals"))
   running_NLMS(noise_list,original_sig,folder_total_sigs,folder_anc_sigs)
-
-
-
-  
-   
-  
 
 
 

@@ -70,7 +70,7 @@ def psd_welch(sig,fs,nfft:int=8192):
     return f, psd_sig
 
      
-def signal_noise_comparison(sig,noise,anc_sig,fs,freq_vector):
+def signal_noise_comparison(sig,noise,anc_sig,fs,freq_vector,fmin,fmax):
         """SNR comparisons plots-must be time domain signals and then i will do PSD by welch method"""
         NUM_PLOTS=2#just 2 PLOTS, before and after
         EPSILON=1e-8
@@ -88,23 +88,61 @@ def signal_noise_comparison(sig,noise,anc_sig,fs,freq_vector):
         snr_after=anc_sig_psd/(noise_psd+EPSILON)
         snr_before_dB=10*np.log10(snr_before)
         snr_after_dB=10*np.log10(snr_after)
-        ax.plot(freq_vector,snr_before_dB,label="SNR Before ANC")
-        ax.plot(freq_vector,snr_after_dB,label="SNR after ANC")
-        ax.set_xlabel('f[hz]')
-        ax.set_ylabel('SNR[dB]')
-        ax.set_title('SNR before and after ANC')
-        ax.legend()
+        ax[0].plot(f1, snr_before_dB, label="Before ANC")
+        ax[1].plot(f1, snr_after_dB, label="After ANC", color='orange')
+        for a in ax:
+            a.set_xlabel("Frequency [Hz]")
+            a.set_ylabel("SNR [dB]")
+            a.legend()
+        ax[0].set_title("SNR Before ANC")
+        ax[1].set_title("SNR After ANC")
         plt.show()
-        bp_snr_before=10*np.log10(bandpower(snr_before))
-        bp_snr_after=10*np.log10(bandpower(snr_after))
+
+        bp_snr_before=10*np.log10(bandpower(snr_before,fs,fmin,fmax))
+        bp_snr_after=10*np.log10(bandpower(snr_after,fs,fmin,fmax))
         return f1,snr_before_dB,snr_after_dB,bp_snr_before,bp_snr_after
 
 def bandpower(pxx,freqs, fs, fmin:float=300, fmax:float=5000):
     """
     Compute band power in [fmin, fmax] using ready equalized psd and freqs
     """
+    assert 0 <= fmin < fmax <= fs/2, "Frequency limits must satisfy 0 ≤ fmin < fmax ≤ fs/2"
+
     idx = (freqs >= fmin) & (freqs <= fmax)
     return trapz(pxx[idx], freqs[idx])
 
-    
+def mean_std(band_power:np.array):
+    """gets band powers array in decibels and brings back expectation and std of it"""
+    lin_before=np.power(10,band_power/10)
+    return np.log10(np.mean(lin_before)),np.log10(np.std(lin_before))
 
+def bandpower_statics(band_power_before:np.array([float]),band_power_after:np.array([float]),fmin,fmax,signals_name:np.array([str])):
+    NUM_PLOTS = 2
+    fig, ax = plt.subplots(NUM_PLOTS, 1, figsize=(8, 6), constrained_layout=True)
+
+    # Figure-level title
+    fig.suptitle(f"Band Power between {fmin} to {fmax} — Before vs After", fontsize=14)
+
+    # Plot 1
+    ax[0].plot(signals_name, band_power_before, marker='o')
+    ax[0].set_ylabel('Band Power (dB)')
+    ax[0].set_title(f'Before ANC: {fmin} – {fmax} Hz')
+    ax[0].tick_params(axis='x', rotation=45)
+
+    # Plot 2
+    ax[1].plot(signals_name, band_power_after, marker='o', color='orange')
+    ax[1].set_ylabel('Band Power (dB)')
+    ax[1].set_title(f'After ANC: {fmin} – {fmax} Hz')
+    ax[1].tick_params(axis='x', rotation=45)
+    mean_before,std_before=mean_std(band_power_before)
+    mean_after,std_after=mean_std(band_power_after)
+
+    fig.text(0.5, 0.03, 
+            f"Mean before ANC: {mean_before:.2f} dB | Std: {std_before:.2f} dB", 
+            ha='center', fontsize=10)
+
+    fig.text(0.5, 0.01, 
+            f"Mean after ANC: {mean_after:.2f} dB | Std: {std_after:.2f} dB", 
+            ha='center', fontsize=10)
+    
+    plt.show()

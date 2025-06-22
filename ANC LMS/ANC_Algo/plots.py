@@ -12,6 +12,7 @@ HOP_FRAC = 0.2
 def get_spectral_args(sample_rate):
      window_size=np.round(sample_rate*WIN_DUR)
      n_overlap=np.round((WIN_DUR*sample_rate)*(1-HOP_FRAC))
+     return n_overlap,window_size
 
 def create_spectogram(sig,fs):
     n_overlap,window_size=get_spectral_args(fs)
@@ -70,14 +71,14 @@ def psd_welch(sig,fs,nfft:int=8192):
     return f, psd_sig
 
      
-def signal_noise_comparison(sig,noise,anc_sig,fs,freq_vector,fmin,fmax):
+def signal_noise_comparison(sig,noise,anc_sig,fs,fmin,fmax):
         """SNR comparisons plots-must be time domain signals and then i will do PSD by welch method"""
         NUM_PLOTS=2#just 2 PLOTS, before and after
         EPSILON=1e-8
         fig,ax=plt.subplots(NUM_PLOTS,1)
-        f1,sig_psd=psd_welch(fs,sig)
-        f2,noise_psd=psd_welch(fs,noise)
-        f3,anc_sig_psd=psd_welch(fs,anc_sig)
+        f1,sig_psd=psd_welch(sig,fs)
+        f2,noise_psd=psd_welch(noise,fs)
+        f3,anc_sig_psd=psd_welch(anc_sig,fs)
         #f1,2,3 must be equal because of len(noise)==len(sig) and fs(sig)=fs(noise)
 
         # Ensure frequency vectors are consistent-JUST IN CASE
@@ -98,8 +99,11 @@ def signal_noise_comparison(sig,noise,anc_sig,fs,freq_vector,fmin,fmax):
         ax[1].set_title("SNR After ANC")
         plt.show()
 
-        bp_snr_before=10*np.log10(bandpower(snr_before,fs,fmin,fmax))
-        bp_snr_after=10*np.log10(bandpower(snr_after,fs,fmin,fmax))
+        bp_sig_before=10*np.log10(bandpower(sig_psd,f1,fs,fmin=fmin,fmax=fmax))
+        bp_noise=10*np.log10(bandpower(noise_psd,f1,fs,fmin=fmin,fmax=fmax))
+        bp_sig_anc=10*np.log10(bandpower(anc_sig_psd,f1,fs,fmin=fmin,fmax=fmax))
+        bp_snr_before=bp_sig_before-bp_noise
+        bp_snr_after=bp_sig_anc-bp_noise
         return f1,snr_before_dB,snr_after_dB,bp_snr_before,bp_snr_after
 
 def bandpower(pxx,freqs, fs, fmin:float=300, fmax:float=5000):

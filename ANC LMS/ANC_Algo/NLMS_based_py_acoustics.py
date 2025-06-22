@@ -36,7 +36,7 @@ def NLMS_calculation(total_sig, noise, fs1, fs2, txt_file:str, filter_len: int =
 
     # Save output
     # sf.write(r"C:\Users\galon\Documents\projects\Wavs\exp1\Anc_cleaned_output1.wav", e, fs1)
-    with open(txt_file, 'w') as file:
+    with open(txt_file, 'a') as file:
          file.write(f"filter len:{filter_len},mu: {mu}")
          file.write("\n")
 

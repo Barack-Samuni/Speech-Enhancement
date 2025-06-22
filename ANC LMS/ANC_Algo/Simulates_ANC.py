@@ -5,6 +5,9 @@ from helping_methods_classes import SigArgs,generate_full_sig,create_folder
 from NLMS_based_py_acoustics import NLMS_calculation
 from plots import plot_spectograms_of_all,signal_noise_comparison,bandpower_statics
 
+# from sys import float_info
+# float_info.epsilon
+
 def get_noises_by_folder(folder:Path):
       """
       *sf.read(wav_file) unpacks the tuple (noise_array, fs)
@@ -37,7 +40,7 @@ def get_one_sig(folder_sig:Path):
 
     printfiles(wav_files)
     try:
-      index=int(input(f"Enter index of desired signal between 0 to {n-1}"))
+      index=int(input(f"Enter index of desired signal between 0 to {n-1}: "))
     except ValueError:
         print("invalid value- must be integer")
         raise ValueError
@@ -57,10 +60,10 @@ def save_file_in_folder(folder_path:Path,sig:SigArgs):
   file_path_saving=folder_path/file_name
   data_sig=sig.sig_array
   fs_sig=sig.fs
-  sf.write(folder_path,data_sig,fs_sig)
+  sf.write(file_path_saving,data_sig,fs_sig)
   print("Full signal is saved")
 
-def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Path, folder_anc_sigs: Path):
+def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Path, folder_anc_sigs: Path,folder_path_sig:Path):
     data_bp_before = np.array([])
     data_bp_after = np.array([])
     sig_names_array = np.array([])
@@ -87,17 +90,13 @@ def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Pat
         sig_names_array = np.append(sig_names_array, full_signal.name)
         anc_object = SigArgs(anc_signal, fs1, f"Anc_{full_signal.name}")
         save_file_in_folder(folder_anc_sigs, anc_object)
-        plot_spectograms_of_all(
-            total_sig=full_signal.sig_array,
-            noise=noise.sig_array,
-            cleaned_sig=anc_object.sig_array
-        )
+        plot_spectograms_of_all(total_sig=full_signal.sig_array,fs1=full_signal.fs,noise=noise.sig_array,cleaned_sig=anc_object.sig_array)
 
         _, _, _, bp_snr_before, bp_snr_after = signal_noise_comparison(
-            sig=sig.sig_array,
+            sig=full_signal.sig_array,
             noise=noise.sig_array,
             anc_sig=anc_signal,
-            fs=fs1,
+            fs=anc_object.fs,
             fmin=fmin,
             fmax=fmax
         )
@@ -107,8 +106,10 @@ def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Pat
 
         with open(text_full_path, 'a') as file:
             file.write("based on welch method of PSDs:\n")
-            file.write(f"SNR band_power before ANC {bp_snr_before}\n")
-            file.write(f"SNR band_power after ANC {bp_snr_after}\n")
+            file.write(f"SNR band_power before ANC {bp_snr_before} dB\n")
+            file.write(f"SNR band_power after ANC {bp_snr_after} dB\n")
+            
+        sig=get_one_sig(folder_path_sig)#reset the cleaned sig for next iterations    
 
     bandpower_statics(
         band_power_before=data_bp_before,
@@ -129,7 +130,7 @@ def main():
   original_sig=get_one_sig(folder_sig=folder_path_sig)
   folder_total_sigs=(create_folder(Path(root_folder_path),"Total_noised_Sigs"))
   folder_anc_sigs=(create_folder(Path(root_folder_path),"Anc_signals"))
-  running_NLMS(noise_list,original_sig,folder_total_sigs,folder_anc_sigs)
+  running_NLMS(noise_list,original_sig,folder_total_sigs,folder_anc_sigs,folder_path_sig)
 
 
 

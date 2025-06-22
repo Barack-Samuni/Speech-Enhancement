@@ -4,8 +4,9 @@ from pathlib import Path
 import scipy.signal as sp
 import matplotlib.pyplot as plt
 
-"""Sig arguenments helpful for output uses"""
+
 class SigArgs:
+    """Sig arguments helpful for output uses"""
     def __init__(self, sig, fs, name):
         self._sig_array = sig
         self._fs = fs
@@ -66,20 +67,20 @@ def generate_full_sig(sig_object:SigArgs,noise_object:SigArgs,noise_lin_amp:floa
     sig=sig_object._sig_array
     fs_sig=sig_object.fs
     
-    if(noise.ndim>=1):
+    if(noise.ndim>1):
         noise = noise.mean(axis=1)
         noise_object.sig_array=noise
-    if(sig.ndim>=1):    
+    if(sig.ndim>1):    
         sig=sig.mean(axis=1)
         sig_object.sig_array=sig
 
     if fs_sig>fs_noise:
-        sig,fs1=resample_fs(sig,fs_old=fs1,fs_new=fs2)
+        sig,fs1=resample_fs(sig,fs_old=fs_sig,fs_new=fs_noise)
         sig_object.sig_array=sig
         sig_object.fs=fs1
 
     elif fs_sig<fs_noise:
-        noise,fs2=resample_fs(sig,fs_old=fs2,fs_new=fs1)
+        noise,fs2=resample_fs(sig,fs_old=fs_noise,fs_new=fs_sig)
         noise_object.sig_array=noise
         noise_object.fs=fs2
 
@@ -90,7 +91,7 @@ def generate_full_sig(sig_object:SigArgs,noise_object:SigArgs,noise_lin_amp:floa
     final_sig=sig+noise
     sig_object.sig_array=sig
     noise_object.sig_array=noise
-    return SigArgs(final_sig,fs1,f"{sig_object.name}_with_{noise_object.name}")
+    return SigArgs(final_sig,noise_object.fs,f"{sig_object.name}_with_{noise_object.name}")
 
 
     # file_add=r"C:\Users\galon\Documents\projects\Wavs\exp1"

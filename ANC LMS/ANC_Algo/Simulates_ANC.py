@@ -92,38 +92,39 @@ def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Pat
         save_file_in_folder(folder_anc_sigs, anc_object)
         plot_spectograms_of_all(total_sig=full_signal.sig_array,fs1=full_signal.fs,noise=noise.sig_array,cleaned_sig=anc_object.sig_array)
 
-        _, _, _, bp_snr_before, bp_snr_after = signal_noise_comparison(
-            sig=full_signal.sig_array,
+        _, _, _, bp_snr_before,bp_noise_delta,_ = signal_noise_comparison(
+            full_sig=full_signal.sig_array,
             noise=noise.sig_array,
             anc_sig=anc_signal,
+            origin_sig=sig.sig_array,
             fs=anc_object.fs,
             fmin=fmin,
             fmax=fmax
         )
 
         data_bp_before = np.append(data_bp_before, bp_snr_before)
-        data_bp_after = np.append(data_bp_after, bp_snr_after)
+        data_bp_after = np.append(data_bp_after, bp_noise_delta)
 
         with open(text_full_path, 'a') as file:
             file.write("based on welch method of PSDs:\n")
+            file.write(f"\n+Bp params: {fmin} to {fmax}")
             file.write(f"SNR band_power before ANC {bp_snr_before} dB\n")
-            file.write(f"SNR band_power after ANC {bp_snr_after} dB\n")
-            
-        sig=get_one_sig(folder_path_sig)#reset the cleaned sig for next iterations    
+            file.write(f"Change in noise band_power after ANC -(noise before minus noise after): {bp_noise_delta} dB\n")
+        if(noise!=list_noise[-1]):#works only before the last element    
+            sig=get_one_sig(folder_path_sig)#reset the cleaned sig for next iterations    
 
     bandpower_statics(
         band_power_before=data_bp_before,
         band_power_after=data_bp_after,
         fmin=fmin,
         fmax=fmax,
-        signals_name_before=sig_names_array,
-        signals_name_after=sig_names_array
+        signals_name=sig_names_array
     )
 
 def main():
   root_folder_path=r"C:\Users\galon\Documents\projects\Wavs"
   #USER INPUT of audio recs path
-  folder_path_noise=Path(f"{root_folder_path}/Noises")
+  folder_path_noise=Path(f"{root_folder_path}/Noises_short")
   folder_path_sig=Path(f"{root_folder_path}/Signals")#Giving the signal Folder
 
   noise_list=get_noises_by_folder(folder=folder_path_noise)

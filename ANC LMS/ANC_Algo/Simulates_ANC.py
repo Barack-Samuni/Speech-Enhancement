@@ -92,7 +92,7 @@ def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Pat
         save_file_in_folder(folder_anc_sigs, anc_object)
         plot_spectograms_of_all(total_sig=full_signal.sig_array,fs1=full_signal.fs,noise=noise.sig_array,cleaned_sig=anc_object.sig_array)
 
-        _, _, _, bp_snr_before,bp_noise_delta,_ = signal_noise_comparison(
+        _, _, _, bp_snr_before,bp_noise_delta = signal_noise_comparison(
             full_sig=full_signal.sig_array,
             noise=noise.sig_array,
             anc_sig=anc_signal,

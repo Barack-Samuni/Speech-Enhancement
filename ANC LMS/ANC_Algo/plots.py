@@ -15,19 +15,22 @@ def get_spectral_args(sample_rate):
      n_overlap=np.round((WIN_DUR*sample_rate)*(1-HOP_FRAC))
      return n_overlap,window_size
 
-def create_spectogram(sig,fs):
+def create_spectogram(sig,fs,nfft:int=8192):
     n_overlap,window_size=get_spectral_args(fs)
-    f1,t1,sig_stft=sp.stft(x=sig,fs=fs,noverlap=n_overlap,nperseg=window_size)
+    f1,t1,sig_stft=sp.stft(x=sig,fs=fs,noverlap=n_overlap,nperseg=window_size,nfft=nfft)
     psd_sig=np.abs(sig_stft)**2
     return f1,t1,psd_sig
 
 
 def paint_spectogram(psd,ax,t,f):
-    im=ax.imshow(10*np.log10(psd),origin='lower',aspect='auto',cmap='inferno',vmin=-90,vmax=-20)
+    im=ax.imshow(10*np.log10(psd),origin='lower',aspect='auto',cmap='inferno',vmin=-90,vmax=-20,extent=[t[0], t[-1], f[0], f[-1]])
     cbar=ax.figure.colorbar(im,ax=ax)
+    ax.set_xticks(np.linspace(t[0], t[-1], num=20))
+    ax.set_yticks(np.linspace(f[0], f[-1], num=5000))
     cbar.set_label("Power[dB]", rotation=270, labelpad=15)
+    ax.set_xlabel("Time [s]")
+    ax.set_ylabel("Frequency [Hz]")
 
-# extent=[t[0], t[-1], f[0], f[-1]]
 def plot_spectograms_of_all(total_sig,noise,cleaned_sig,fs1,kmin=0,kmax=200):
     """ create Specotgram to all 3 signals based on the signals, sample rate"""
     f1,t1,psd_total=create_spectogram(total_sig,fs1)
@@ -74,30 +77,31 @@ def psd_welch(sig,fs,nfft:int=8192):
 def handle_SNR_after(f1,origin_sig_psd,anc_sig_psd,ax):
     snr_after = anc_sig_psd / (np.abs(anc_sig_psd - origin_sig_psd) + EPSILON)#X^/N^
     snr_after_dB = 10 * np.log10(snr_after)
-    ax.plot(f1, snr_after_dB, label="After ANC", color='orange')
+    ax.plot(f1, snr_after_dB, label="After ANC", color='pink')
     ax.set_title("SNR After ANC")
     return snr_after
 
-def handle_bp_after(f1,origin_sig_psd,bp_sig_anc_db,fs,fmin,fmax,figure):
-        bp_origin_sig_db = 10*np.log10(bandpower(origin_sig_psd, f1, fs, fmin=fmin, fmax=fmax))
-        bp_noise_after_db = bp_sig_anc_db - bp_origin_sig_db
-        bp_after_db=bp_sig_anc_db-bp_noise_after_db
-        figure.text(0.5, 0.00, f"BP {fmin}-{fmax} Hz SNR After ANC: {bp_after_db:.2f} dB", ha='center', fontsize=10)
-        return bp_after_db
+def handle_bp_after(f1,origin_sig_psd,bp_sig_anc,fs,fmin,fmax,figure):
+        bp_origin_sig =(bandpower(origin_sig_psd, f1, fs, fmin=fmin, fmax=fmax))
+        bp_estimated_noise=np.abs(bp_sig_anc-bp_origin_sig)+EPSILON
+        snr_after_bp_db = 10*np.log10(bp_origin_sig/bp_estimated_noise)
+        figure.text(0.5, 0.00, f"BP {fmin}-{fmax} Hz SNR After ANC: {snr_after_bp_db:.2f} dB", ha='center', fontsize=10)
+        return snr_after_bp_db
 
 def handle_bandpowers(f1,full_sig_psd,noise_psd,anc_sig_psd,fs,fmin,fmax,origin_psd,fig):
     bp_sig_before_db=10*np.log10(bandpower(full_sig_psd,f1,fs,fmin=fmin,fmax=fmax))
     bp_noise_db=10*np.log10(bandpower(noise_psd,f1,fs,fmin=fmin,fmax=fmax))
-    bp_sig_anc_db=10*np.log10(bandpower(anc_sig_psd,f1,fs,fmin=fmin,fmax=fmax))
+    bp_sig_anc=(bandpower(anc_sig_psd,f1,fs,fmin=fmin,fmax=fmax))
+    bp_sig_anc_db=10*np.log10(bp_sig_anc)
     bp_snr_before_db=bp_sig_before_db-bp_noise_db
     bp_delta_n_db=bp_sig_before_db-bp_sig_anc_db
     if origin_psd is not None:
-        bp_after_db=handle_bp_after(f1,origin_psd,bp_sig_anc_db,fs,fmin,fmax,fig)
+        bp_after_db=handle_bp_after(f1,origin_psd,bp_sig_anc,fs,fmin,fmax,fig)
     fig.text(0.5, 0.03, 
     f"BP-{fmin} to {fmax} SNR before ANC: {bp_snr_before_db:.2f} dB",ha='center', fontsize=10)
     fig.text(0.5, 0.01, 
             f"delta noise-{fmin} to {fmax} of(noise before(in the beginning)-noise after ANC): {bp_delta_n_db:.2f} dB",ha='center', fontsize=10)         
-    return bp_snr_before_db,bp_delta_n_db,bp_after_db
+    return bp_snr_before_db,bp_delta_n_db
      
 def signal_noise_comparison(full_sig,noise,anc_sig,fs,fmin,fmax,origin_sig=None):
         """SNR comparisons plots-must be time domain signals and then i will do PSD by welch method"""
@@ -119,7 +123,7 @@ def signal_noise_comparison(full_sig,noise,anc_sig,fs,fmin,fmax,origin_sig=None)
         assert np.allclose(f1, f2) and np.allclose(f1, f3) and np.allclose(f1,f4)
         
         snr_before=full_sig_psd/(noise_psd+EPSILON)
-        delta_noise=full_sig_psd/origin_sig_psd
+        delta_noise=np.abs(full_sig_psd-anc_sig_psd)
 
         if origin_sig is not None:
              snr_after=handle_SNR_after(f1,origin_sig_psd,anc_sig_psd,ax[1])
@@ -127,8 +131,8 @@ def signal_noise_comparison(full_sig,noise,anc_sig,fs,fmin,fmax,origin_sig=None)
         snr_before_dB=10*np.log10(snr_before)
         delta_noise_db = 10 * np.log10(np.maximum(np.abs(delta_noise), EPSILON))
 
-        ax[0].plot(f1, snr_before_dB, label="Before ANC")
-        ax[2].plot(f1,delta_noise_db,label="Change in noise in spectral")
+        ax[0].plot(f1, snr_before_dB, label="Before ANC",color="blue")
+        ax[2].plot(f1,delta_noise_db,label="Change in noise in spectral",color="orange")
         for a in ax:
             a.set_xlabel("Frequency [Hz]")
             a.set_ylabel("SNR [dB]")
@@ -139,8 +143,8 @@ def signal_noise_comparison(full_sig,noise,anc_sig,fs,fmin,fmax,origin_sig=None)
         
         plt.tight_layout()
         plt.show()
-        bp_snr_before_db,bp_delta_n_db,bp_after_db=handle_bandpowers(f1,full_sig_psd,noise_psd,anc_sig_psd,fs,fmin,fmax,origin_sig_psd,fig)
-        return f1,snr_before_dB,delta_noise_db,bp_snr_before_db,bp_delta_n_db,bp_after_db
+        bp_snr_before_db,bp_delta_n_db=handle_bandpowers(f1,full_sig_psd,noise_psd,anc_sig_psd,fs,fmin,fmax,origin_sig_psd,fig)
+        return f1,snr_before_dB,delta_noise_db,bp_snr_before_db,bp_delta_n_db
 
 def bandpower(pxx,freqs, fs, fmin:float=300, fmax:float=5000):
     """
@@ -164,7 +168,7 @@ def bandpower_statics(band_power_before:np.array([float]),band_power_after:np.ar
     fig.suptitle(f"Band Power between {fmin} to {fmax} — Before vs After", fontsize=14)
 
     # Plot 1
-    ax[0].plot(signals_name, band_power_before, marker='o')
+    ax[0].plot(signals_name, band_power_before, marker='o',color="green")
     ax[0].set_ylabel('Band Power (dB)')
     ax[0].set_title(f'Before ANC-SNR: {fmin} – {fmax} Hz')
     ax[0].tick_params(axis='x', rotation=45)

@@ -94,7 +94,7 @@ def handle_bandpowers(f1,full_sig_psd,noise_psd,anc_sig_psd,fs,fmin,fmax,origin_
     bp_sig_anc=(bandpower(anc_sig_psd,f1,fs,fmin=fmin,fmax=fmax))
     bp_sig_anc_db=10*np.log10(bp_sig_anc)
     bp_snr_before_db=bp_sig_before_db-bp_noise_db
-    bp_delta_n_db=bp_sig_before_db-bp_sig_anc_db
+    bp_delta_n_db=bp_sig_anc_db-bp_sig_before_db
     if origin_psd is not None:
         bp_after_db=handle_bp_after(f1,origin_psd,bp_sig_anc,fs,fmin,fmax,fig)
     fig.text(0.5, 0.03, 
@@ -123,7 +123,7 @@ def signal_noise_comparison(full_sig,noise,anc_sig,fs,fmin,fmax,origin_sig=None)
         assert np.allclose(f1, f2) and np.allclose(f1, f3) and np.allclose(f1,f4)
         
         snr_before=full_sig_psd/(noise_psd+EPSILON)
-        delta_noise=np.abs(full_sig_psd-anc_sig_psd)
+        delta_noise=np.abs(anc_sig_psd-full_sig_psd)
 
         if origin_sig is not None:
              snr_after=handle_SNR_after(f1,origin_sig_psd,anc_sig_psd,ax[1])

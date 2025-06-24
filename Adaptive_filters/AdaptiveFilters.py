@@ -1,8 +1,8 @@
 import numpy as np
-
+from tqdm import tqdm
 
 class RLSFilter:
-    def __init__(self, n_taps, lam=0.99, delta=1.0):
+    def __init__(self, n_taps, lam=0.999, delta=10.0):
         self.n_taps = n_taps
         self.lam = lam
         self.delta = delta
@@ -32,3 +32,26 @@ class RLSFilter:
 
     def predict(self, x):
         return self.w @ np.array(x)
+    
+    def process(self, noisy_signal, noise):
+        # wraps the whole process of filtering the signal
+        # Ensure both have the same length and shape
+        min_len = min(len(noisy_signal), len(noise))
+        noise = noise[:min_len]
+        noisy_signal = noisy_signal[:min_len]
+        N = len(noisy_signal)
+        print("Starting noise cancellation...")
+        pbar = tqdm(total=100)
+
+        errors = []
+        for i in range(N - self.n_taps + 1):
+            x_vec = noisy_signal[i:i+self.n_taps]
+            d = noise[i]
+            y, e = self.adapt(x_vec, d)
+            errors.append(e)
+            pbar.update(i/(N - self.n_taps + 1))
+
+        err_array = np.array(errors)
+
+        return err_array
+

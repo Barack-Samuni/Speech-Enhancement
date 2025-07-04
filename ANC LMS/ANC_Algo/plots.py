@@ -102,7 +102,18 @@ def handle_bandpowers(f1,full_sig_psd,noise_psd,anc_sig_psd,fs,fmin,fmax,origin_
     fig.text(0.5, 0.01, 
             f"delta noise-{fmin} to {fmax} of(noise before(in the beginning)-noise after ANC): {bp_delta_n_db:.2f} dB",ha='center', fontsize=10)         
     return bp_snr_before_db,bp_delta_n_db
-     
+
+def handle_snr_after_algo(fs,anc_sig,full_sig,snr_before):
+     """
+     fs- signal sample rate
+     anc sig, full sig- time domain
+     snr_before-PSD(w)
+     the function converts the old SNR to time domain and reaching us the new SNR based of known params.
+     """
+     anc_var=np.var(anc_sig)
+     full_sig_var=np.var(full_sig)
+     snr_before
+          
 def signal_noise_comparison(full_sig,noise,anc_sig,fs,fmin,fmax,origin_sig=None):
         """SNR comparisons plots-must be time domain signals and then i will do PSD by welch method"""
         NUM_PLOTS=3#just 3 PLOTS, before and after and delta n

@@ -88,6 +88,23 @@ def handle_bp_after(f1,origin_sig_psd,bp_sig_anc,fs,fmin,fmax,figure):
         figure.text(0.5, 0.00, f"BP {fmin}-{fmax} Hz SNR After ANC: {snr_after_bp_db:.2f} dB", ha='center', fontsize=10)
         return snr_after_bp_db
 
+
+def handle_new_snr(fs,f,full_sig_psd,anc_sig_psd,snr_before_psd):
+     """
+     based on Var(s)/Var(s^), because it is energy we can divide in frequency domain
+     Final equation of our new Spectral SNR=(S*snr)/(anc_sig*(snr+1)-S)
+     """
+     numerator=(full_sig_psd*snr_before_psd)
+     denumerator=(anc_sig_psd*(snr_before_psd+1)-full_sig_psd)
+     numerator_bp=bandpower(numerator,f,fs)
+     denumerator_bp=bandpower(denumerator,f,fs)
+     snr_after_psd=numerator/denumerator
+     snr_after_bp=numerator_bp/denumerator_bp
+     return snr_after_psd,snr_after_bp
+     
+
+     
+
 def handle_bandpowers(f1,full_sig_psd,noise_psd,anc_sig_psd,fs,fmin,fmax,origin_psd,fig):
     bp_sig_before_db=10*np.log10(bandpower(full_sig_psd,f1,fs,fmin=fmin,fmax=fmax))
     bp_noise_db=10*np.log10(bandpower(noise_psd,f1,fs,fmin=fmin,fmax=fmax))

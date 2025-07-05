@@ -23,13 +23,14 @@ def create_spectogram(sig,fs,nfft:int=8192):
 
 
 def paint_spectogram(psd,ax,t,f):
-    im=ax.imshow(10*np.log10(psd),origin='lower',aspect='auto',cmap='inferno',vmin=-90,vmax=-20,extent=[t[0], t[-1], f[0], f[-1]])
+    im=ax.imshow(10*np.log10(psd),origin='lower',aspect='auto',cmap='inferno',vmin=-90,vmax=-20)
     cbar=ax.figure.colorbar(im,ax=ax)
-    ax.set_xticks(np.linspace(t[0], t[-1], num=20))
-    ax.set_yticks(np.linspace(f[0], f[-1], num=5000))
+    # ax.set_xticks(np.linspace(t[0], t[-1], num=20))
+    # ax.set_yticks(np.linspace(f[0], f[-1], num=5000))
     cbar.set_label("Power[dB]", rotation=270, labelpad=15)
-    ax.set_xlabel("Time [s]")
-    ax.set_ylabel("Frequency [Hz]")
+    # ax.set_xlabel("Time [s]")
+    # ax.set_ylabel("Frequency [Hz]")
+    #extent=[t[0], t[-1], f[0], f[-1]]
 
 def plot_spectograms_of_all(total_sig,noise,cleaned_sig,fs1,kmin=0,kmax=200):
     """ create Specotgram to all 3 signals based on the signals, sample rate"""
@@ -60,13 +61,13 @@ def plot_spectograms_of_all(total_sig,noise,cleaned_sig,fs1,kmin=0,kmax=200):
 
 
 
-# def smooth_data(fs,sig,f):
-#     """To smooth the signals just for the comparison plot"""
-#     window_size=np.round(fs*WIN_DUR)
-#     sig=uniform_filter(sig,window_size,mode="reflect")
-#     f=uniform_filter(f,window_size,mode="reflect")
-#     return f,sig
-#      #'reflect' mirrors your signal across the border.
+def smooth_data(fs,sig,f):
+    """To smooth the signals just for the comparison plot"""
+    window_size=20
+    sig=uniform_filter(sig,window_size,mode="reflect")
+    f=uniform_filter(f,window_size,mode="reflect")
+    return f,sig
+     #'reflect' mirrors your signal across the border.
 
 
 def psd_welch(sig,fs,nfft:int=8192):
@@ -74,19 +75,19 @@ def psd_welch(sig,fs,nfft:int=8192):
     f,psd_sig=sp.welch(sig,fs,nperseg=window_size,noverlap=n_overlap,nfft=nfft)
     return f, psd_sig
 
-def handle_SNR_after(f1,origin_sig_psd,anc_sig_psd,ax):
-    snr_after = anc_sig_psd / (np.abs(anc_sig_psd - origin_sig_psd) + EPSILON)#X^/N^
-    snr_after_dB = 10 * np.log10(snr_after)
-    ax.plot(f1, snr_after_dB, label="After ANC", color='pink')
-    ax.set_title("SNR After ANC")
-    return snr_after
+# def handle_SNR_after(f1,origin_sig_psd,anc_sig_psd,ax):
+#     snr_after = anc_sig_psd / (np.abs(anc_sig_psd - origin_sig_psd) + EPSILON)#X^/N^
+#     snr_after_dB = 10 * np.log10(snr_after)
+#     ax.plot(f1, snr_after_dB, label="After ANC", color='pink')
+#     ax.set_title("SNR After ANC")
+#     return snr_after
 
-def handle_bp_after(f1,origin_sig_psd,bp_sig_anc,fs,fmin,fmax,figure):
-        bp_origin_sig =(bandpower(origin_sig_psd, f1, fs, fmin=fmin, fmax=fmax))
-        bp_estimated_noise=np.abs(bp_sig_anc-bp_origin_sig)+EPSILON
-        snr_after_bp_db = 10*np.log10(bp_origin_sig/bp_estimated_noise)
-        figure.text(0.5, 0.00, f"BP {fmin}-{fmax} Hz SNR After ANC: {snr_after_bp_db:.2f} dB", ha='center', fontsize=10)
-        return snr_after_bp_db
+# def handle_bp_after(f1,origin_sig_psd,bp_sig_anc,fs,fmin,fmax,figure):
+#         bp_origin_sig =(bandpower(origin_sig_psd, f1, fs, fmin=fmin, fmax=fmax))
+#         bp_estimated_noise=np.abs(bp_sig_anc-bp_origin_sig)+EPSILON
+#         snr_after_bp_db = 10*np.log10(bp_origin_sig/bp_estimated_noise)
+#         figure.text(0.5, 0.00, f"BP {fmin}-{fmax} Hz SNR After ANC: {snr_after_bp_db:.2f} dB", ha='center', fontsize=10)
+#         return snr_after_bp_db
 
 
 def handle_new_snr(fs,f,full_sig_psd,anc_sig_psd,snr_before_psd):
@@ -98,81 +99,69 @@ def handle_new_snr(fs,f,full_sig_psd,anc_sig_psd,snr_before_psd):
      denumerator=(anc_sig_psd*(snr_before_psd+1)-full_sig_psd)
      numerator_bp=bandpower(numerator,f,fs)
      denumerator_bp=bandpower(denumerator,f,fs)
-     snr_after_psd=numerator/denumerator
-     snr_after_bp=numerator_bp/denumerator_bp
+     snr_after_psd=numerator/(denumerator+EPSILON)
+     snr_after_bp=numerator_bp/(denumerator_bp+EPSILON)
      return snr_after_psd,snr_after_bp
      
+def handle_old_snr(fs,f,full_sig_psd,noise_sig_psd):
+     """
+     based on Var(s)/Var(s^), because it is energy we can divide in frequency domain
+     Final equation of our new Spectral SNR=(S*snr)/(anc_sig*(snr+1)-S)
+     """
+     numerator_bp=bandpower(full_sig_psd,f,fs)
+     denumerator_bp=bandpower(noise_sig_psd,f,fs)
+     snr_before_psd=full_sig_psd/noise_sig_psd
+     snr_before_bp=numerator_bp/denumerator_bp
+     return snr_before_psd,snr_before_bp
+     
 
      
 
-def handle_bandpowers(f1,full_sig_psd,noise_psd,anc_sig_psd,fs,fmin,fmax,origin_psd,fig):
-    bp_sig_before_db=10*np.log10(bandpower(full_sig_psd,f1,fs,fmin=fmin,fmax=fmax))
-    bp_noise_db=10*np.log10(bandpower(noise_psd,f1,fs,fmin=fmin,fmax=fmax))
-    bp_sig_anc=(bandpower(anc_sig_psd,f1,fs,fmin=fmin,fmax=fmax))
-    bp_sig_anc_db=10*np.log10(bp_sig_anc)
-    bp_snr_before_db=bp_sig_before_db-bp_noise_db
-    bp_delta_n_db=bp_sig_anc_db-bp_sig_before_db
-    if origin_psd is not None:
-        bp_after_db=handle_bp_after(f1,origin_psd,bp_sig_anc,fs,fmin,fmax,fig)
+def handle_bandpowers(before_snr_bp,after_snr_bp,fig:plt.figure,fmin:float=300,fmax:float=5000):
+    bp_snr_before_db=10*np.log10(before_snr_bp)
+    bp_after_bp_db=10*np.log10(after_snr_bp)
     fig.text(0.5, 0.03, 
     f"BP-{fmin} to {fmax} SNR before ANC: {bp_snr_before_db:.2f} dB",ha='center', fontsize=10)
     fig.text(0.5, 0.01, 
-            f"delta noise-{fmin} to {fmax} of(noise before(in the beginning)-noise after ANC): {bp_delta_n_db:.2f} dB",ha='center', fontsize=10)         
-    return bp_snr_before_db,bp_delta_n_db
+            f"BP-{fmin} to {fmax} SNR after ANC : {bp_after_bp_db:.2f} dB",ha='center', fontsize=10)         
+    return bp_snr_before_db,bp_after_bp_db
 
-def handle_snr_after_algo(fs,anc_sig,full_sig,snr_before):
-     """
-     fs- signal sample rate
-     anc sig, full sig- time domain
-     snr_before-PSD(w)
-     the function converts the old SNR to time domain and reaching us the new SNR based of known params.
-     """
-     anc_var=np.var(anc_sig)
-     full_sig_var=np.var(full_sig)
-     snr_before
+
           
-def signal_noise_comparison(full_sig,noise,anc_sig,fs,fmin,fmax,origin_sig=None):
+def signal_noise_comparison(full_sig,noise,anc_sig,fs,fmin:float=300,fmax:float=5000):
         """SNR comparisons plots-must be time domain signals and then i will do PSD by welch method"""
-        NUM_PLOTS=3#just 3 PLOTS, before and after and delta n
-        snr_after = None
-        origin_sig_psd=None
+        NUM_PLOTS=2#just 2
         fig,ax=plt.subplots(NUM_PLOTS,1)
         f1,full_sig_psd=psd_welch(full_sig,fs)
         f2,noise_psd=psd_welch(noise,fs)
         f3,anc_sig_psd=psd_welch(anc_sig,fs)
        
-        if origin_sig is not None:
-             f4, origin_sig_psd = psd_welch(origin_sig, fs)
-        else:
-            origin_sig_psd=None
-            f4 = f1  # just for assert check
-
         # Ensure frequency vectors are consistent-JUST IN CASE
-        assert np.allclose(f1, f2) and np.allclose(f1, f3) and np.allclose(f1,f4)
+        assert np.allclose(f1, f2) and np.allclose(f1, f3) 
         
-        snr_before=full_sig_psd/(noise_psd+EPSILON)
-        delta_noise=np.abs(anc_sig_psd-full_sig_psd)
+        snr_before_psd,snr_before_bp=handle_old_snr(fs,f1,full_sig_psd,noise_psd)
 
-        if origin_sig is not None:
-             snr_after=handle_SNR_after(f1,origin_sig_psd,anc_sig_psd,ax[1])
+        snr_after_psd,snr_after_bp=handle_new_snr(fs,f1,full_sig_psd,anc_sig_psd,snr_before_psd)
+        _,snr_before_psd=smooth_data(fs,snr_before_psd,f1)
+        f1,snr_after_psd=smooth_data(fs,snr_after_psd,f1)
+        snr_before_dB_psd=10*np.log10(snr_before_psd)
+        snr_after_dB_psd=10*np.log10(snr_after_psd)
 
-        snr_before_dB=10*np.log10(snr_before)
-        delta_noise_db = 10 * np.log10(np.maximum(np.abs(delta_noise), EPSILON))
-
-        ax[0].plot(f1, snr_before_dB, label="Before ANC",color="blue")
-        ax[2].plot(f1,delta_noise_db,label="Change in noise in spectral",color="orange")
+        ax[0].plot(f1, snr_before_dB_psd, label="Before ANC",color="blue")
+        ax[1].plot(f1,snr_after_dB_psd,label="Change in noise in spectral",color="orange")
         for a in ax:
             a.set_xlabel("Frequency [Hz]")
             a.set_ylabel("SNR [dB]")
             a.legend()
         ax[0].set_title("SNR Before ANC")
         ax[1].set_title("SNR After ANC")
-        ax[2].set_title("delta noise (noise(before anc)-noise(after anc))")
         
         plt.tight_layout()
+   
+
+        bp_snr_before_db,bp_snr_after_db=handle_bandpowers(snr_before_bp,snr_after_bp,fig,fmin,fmax)
         plt.show()
-        bp_snr_before_db,bp_delta_n_db=handle_bandpowers(f1,full_sig_psd,noise_psd,anc_sig_psd,fs,fmin,fmax,origin_sig_psd,fig)
-        return f1,snr_before_dB,delta_noise_db,bp_snr_before_db,bp_delta_n_db
+        return bp_snr_before_db,bp_snr_after_db
 
 def bandpower(pxx,freqs, fs, fmin:float=300, fmax:float=5000):
     """
@@ -204,19 +193,29 @@ def bandpower_statics(band_power_before:np.array([float]),band_power_after:np.ar
     # Plot 2
     ax[1].plot(signals_name, band_power_after, marker='o', color='orange')
     ax[1].set_ylabel('Band Power (dB)')
-    ax[1].set_title(f'After ANC-Delta noises: {fmin} – {fmax} Hz')
+    ax[1].set_title(f'After ANC-SNR: {fmin} – {fmax} Hz')
     ax[1].tick_params(axis='x', rotation=45)
     mean_before,std_before=mean_std(band_power_before)
     mean_after,std_after=mean_std(band_power_after)
     
-
-    fig.text(0.5, 0.03, 
-            f"Mean before ANC: {mean_before:.2f} dB | Std: {std_before:.2f} dB", 
+    if (len(band_power_before>1)):
+        fig.text(0.5, 0.03, 
+            f"Mean BP SNR before ANC: {mean_before:.2f} dB | Std: {std_before:.2f} dB", 
             ha='center', fontsize=10)
 
-    fig.text(0.5, 0.01, 
-            f"Mean after ANC of noise change (before-after): {mean_after:.2f} dB | Std: {std_after:.2f} dB", 
+
+        fig.text(0.5, 0.01, 
+            f"Mean BP SNR after ANC: {mean_after:.2f} dB | Std: {std_after:.2f} dB", 
             ha='center', fontsize=10)
-    
+    else:
+            fig.text(0.5, 0.03, 
+            f"Mean BP SNR before ANC: {mean_before:.2f} dB", 
+            ha='center', fontsize=10)
+
+            fig.text(0.5, 0.03, 
+            f"Mean BP SNR after ANC: {mean_before:.2f} dB", 
+            ha='center', fontsize=10)
+
+
     plt.tight_layout()
     plt.show()

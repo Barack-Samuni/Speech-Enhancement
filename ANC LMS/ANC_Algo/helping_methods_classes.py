@@ -87,8 +87,9 @@ def generate_full_sig(sig_object:SigArgs,noise_object:SigArgs,noise_lin_amp:floa
         
     coomon_len=common_length(sig,noise)
     sig=sig[:coomon_len]
-    noise=noise[:coomon_len]*noise_lin_amp
-    final_sig=sig+noise
+    noise=noise[:coomon_len]
+    #noise=noise[:coomon_len]*noise_lin_amp
+    final_sig=sig+(noise*noise_lin_amp)
     sig_object.sig_array=sig
     noise_object.sig_array=noise#must rethink again
     return SigArgs(final_sig,noise_object.fs,f"{sig_object.name}_with_{noise_object.name}")

@@ -92,24 +92,23 @@ def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Pat
         save_file_in_folder(folder_anc_sigs, anc_object)
         plot_spectograms_of_all(total_sig=full_signal.sig_array,fs1=full_signal.fs,noise=noise.sig_array,cleaned_sig=anc_object.sig_array)
 
-        _, _, _, bp_snr_before,bp_noise_delta = signal_noise_comparison(
+        bp_snr_before_dB,bp_snr_after_dB = signal_noise_comparison(
             full_sig=full_signal.sig_array,
             noise=noise.sig_array,
             anc_sig=anc_signal,
-            origin_sig=sig.sig_array,
             fs=anc_object.fs,
             fmin=fmin,
             fmax=fmax
         )
 
-        data_bp_before = np.append(data_bp_before, bp_snr_before)
-        data_bp_after = np.append(data_bp_after, bp_noise_delta)
+        data_bp_before = np.append(data_bp_before, bp_snr_before_dB)
+        data_bp_after = np.append(data_bp_after, bp_snr_after_dB)
 
         with open(text_full_path, 'a') as file:
             file.write("based on welch method of PSDs:\n")
             file.write(f"\n+Bp params: {fmin} to {fmax}")
-            file.write(f"SNR band_power before ANC {bp_snr_before} dB\n")
-            file.write(f"Change in noise band_power after ANC -(noise before minus noise after): {bp_noise_delta} dB\n")
+            file.write(f"SNR band_power before ANC {bp_snr_before_dB} dB\n")
+            file.write(f"SNR band_power after ANC : {bp_snr_after_dB} dB\n")
         if(noise!=list_noise[-1]):#works only before the last element    
             sig=get_one_sig(folder_path_sig)#reset the cleaned sig for next iterations    
 

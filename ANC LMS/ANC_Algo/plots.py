@@ -11,11 +11,13 @@ HOP_FRAC = 0.2
 EPSILON=1e-8
 
 def get_spectral_args(sample_rate):
+     """spectral args function to stft and WELCH"""
      window_size=np.round(sample_rate*WIN_DUR)
      n_overlap=np.round((WIN_DUR*sample_rate)*(1-HOP_FRAC))
      return n_overlap,window_size
 
 def create_spectogram(sig,fs,nfft:int=8192):
+    """STFT FUNCTION BASED ON SCIPY"""
     n_overlap,window_size=get_spectral_args(fs)
     f1,t1,sig_stft=sp.stft(x=sig,fs=fs,noverlap=n_overlap,nperseg=window_size,nfft=nfft)
     psd_sig=np.abs(sig_stft)**2
@@ -23,6 +25,7 @@ def create_spectogram(sig,fs,nfft:int=8192):
 
 
 def paint_spectogram(psd,ax,t,f):
+    """PRESTING GENERAL SPECTOGRAM"""
     im=ax.imshow(10*np.log10(psd),origin='lower',aspect='auto',cmap='inferno',vmin=-90,vmax=-20)
     cbar=ax.figure.colorbar(im,ax=ax)
     # ax.set_xticks(np.linspace(t[0], t[-1], num=20))
@@ -61,8 +64,8 @@ def plot_spectograms_of_all(total_sig,noise,cleaned_sig,fs1,kmin=0,kmax=200):
 
 
 
-def smooth_data(fs,sig,f):
-    """To smooth the signals just for the comparison plot"""
+def smooth_data(sig,f):
+    """To smooth the signals just for the comparison plot-Uniform filter of SCIPY"""
     window_size=20
     sig=uniform_filter(sig,window_size,mode="reflect")
     f=uniform_filter(f,window_size,mode="reflect")
@@ -71,6 +74,7 @@ def smooth_data(fs,sig,f):
 
 
 def psd_welch(sig,fs,nfft:int=8192):
+    """Welch method to get PSD of the signals by Certain Spectral Args"""
     n_overlap,window_size=get_spectral_args(fs)
     f,psd_sig=sp.welch(sig,fs,nperseg=window_size,noverlap=n_overlap,nfft=nfft)
     return f, psd_sig
@@ -92,21 +96,20 @@ def psd_welch(sig,fs,nfft:int=8192):
 
 def handle_new_snr(fs,f,full_sig_psd,anc_sig_psd,snr_before_psd):
      """
-     based on Var(s)/Var(s^), because it is energy we can divide in frequency domain
+     based on PARSAVL because it is energy we can divide in frequency domain
      Final equation of our new Spectral SNR=(S*snr)/(anc_sig*(snr+1)-S)
      """
      numerator=(full_sig_psd*snr_before_psd)
-     denumerator=(anc_sig_psd*(snr_before_psd+1)-full_sig_psd)
+     denumerator=np.abs(anc_sig_psd*(snr_before_psd+1)-full_sig_psd)
      numerator_bp=bandpower(numerator,f,fs)
      denumerator_bp=bandpower(denumerator,f,fs)
-     snr_after_psd=numerator/(denumerator+EPSILON)
-     snr_after_bp=numerator_bp/(denumerator_bp+EPSILON)
+     snr_after_psd=numerator/(denumerator)
+     snr_after_bp=numerator_bp/denumerator_bp
      return snr_after_psd,snr_after_bp
      
 def handle_old_snr(fs,f,full_sig_psd,noise_sig_psd):
      """
-     based on Var(s)/Var(s^), because it is energy we can divide in frequency domain
-     Final equation of our new Spectral SNR=(S*snr)/(anc_sig*(snr+1)-S)
+     Full Signal divided By noise
      """
      numerator_bp=bandpower(full_sig_psd,f,fs)
      denumerator_bp=bandpower(noise_sig_psd,f,fs)
@@ -118,6 +121,7 @@ def handle_old_snr(fs,f,full_sig_psd,noise_sig_psd):
      
 
 def handle_bandpowers(before_snr_bp,after_snr_bp,fig:plt.figure,fmin:float=300,fmax:float=5000):
+    """presents The bandpower on the graphs"""
     bp_snr_before_db=10*np.log10(before_snr_bp)
     bp_after_bp_db=10*np.log10(after_snr_bp)
     fig.text(0.5, 0.03, 
@@ -142,8 +146,8 @@ def signal_noise_comparison(full_sig,noise,anc_sig,fs,fmin:float=300,fmax:float=
         snr_before_psd,snr_before_bp=handle_old_snr(fs,f1,full_sig_psd,noise_psd)
 
         snr_after_psd,snr_after_bp=handle_new_snr(fs,f1,full_sig_psd,anc_sig_psd,snr_before_psd)
-        _,snr_before_psd=smooth_data(fs,snr_before_psd,f1)
-        f1,snr_after_psd=smooth_data(fs,snr_after_psd,f1)
+        _,snr_before_psd=smooth_data(snr_before_psd,f1)#smoothing the SNR signals by uniform filter
+        f1,snr_after_psd=smooth_data(snr_after_psd,f1)
         snr_before_dB_psd=10*np.log10(snr_before_psd)
         snr_after_dB_psd=10*np.log10(snr_after_psd)
 
@@ -175,9 +179,10 @@ def bandpower(pxx,freqs, fs, fmin:float=300, fmax:float=5000):
 def mean_std(band_power:np.array):
     """gets band powers array in decibels and brings back expectation and std of it"""
     lin_before=np.power(10,band_power/10)
-    return np.log10(np.mean(lin_before)),np.log10(np.std(lin_before+EPSILON))
+    return 10*np.log10(np.mean(lin_before)),10*np.log10(np.std(lin_before+EPSILON))
 
 def bandpower_statics(band_power_before:np.array([float]),band_power_after:np.array([float]),fmin,fmax,signals_name:np.array([str])): # type: ignore
+    """Band power stats of all ANC recs to be shown as further analysis"""
     NUM_PLOTS = 2
     fig, ax = plt.subplots(NUM_PLOTS, 1, figsize=(8, 6), constrained_layout=True)
 

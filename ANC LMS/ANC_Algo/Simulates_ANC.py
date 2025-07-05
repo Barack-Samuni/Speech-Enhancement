@@ -56,6 +56,7 @@ def get_one_sig(folder_sig:Path):
 
 
 def save_file_in_folder(folder_path:Path,sig:SigArgs):
+  """The function saves Sig args in specified folder"""
   file_name=sig.name+".wav"
   file_path_saving=folder_path/file_name
   data_sig=sig.sig_array
@@ -63,23 +64,28 @@ def save_file_in_folder(folder_path:Path,sig:SigArgs):
   sf.write(file_path_saving,data_sig,fs_sig)
   print("Full signal is saved")
 
+
+#TODO:Next brunch--->must be more general to all ANC methods using Ori's wrapper of AdaptiveFilter!
 def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Path, folder_anc_sigs: Path,folder_path_sig:Path):
+    """Running NLMS algorithem on list of noises joined by certain sig and anlayze the S^(t) of all that signals in folder"""
     data_bp_before = np.array([])
     data_bp_after = np.array([])
     sig_names_array = np.array([])
+    
+    #Band Power limits
     fmin = 300
     fmax = 5000
 
     for noise in list_noise:
-        full_signal = generate_full_sig(sig_object=sig, noise_object=noise)
+        full_signal = generate_full_sig(sig_object=sig, noise_object=noise)#generates X+N
         save_file_in_folder(folder_total_sigs, full_signal)
-        text_full_path = f"{folder_anc_sigs}/{full_signal.name}.txt"
+        text_full_path = f"{folder_anc_sigs}/{full_signal.name}.txt"#creates comments txt file to each process
 
         with open(text_full_path, 'w') as file:
             file.write(f"Anc with {sig.name}-NLMS Method\n")
             file.write(f"Signal fs: {full_signal.fs}\n")
 
-        anc_signal, fs1 = NLMS_calculation(
+        anc_signal, fs1 = NLMS_calculation(#calling to NLMS Method
             total_sig=full_signal.sig_array,
             noise=noise.sig_array,
             fs1=full_signal.fs,
@@ -89,10 +95,11 @@ def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Pat
 
         sig_names_array = np.append(sig_names_array, full_signal.name)
         anc_object = SigArgs(anc_signal, fs1, f"Anc_{full_signal.name}")
-        save_file_in_folder(folder_anc_sigs, anc_object)
+        save_file_in_folder(folder_anc_sigs, anc_object)#saves ANC recordings
         plot_spectograms_of_all(total_sig=full_signal.sig_array,fs1=full_signal.fs,noise=noise.sig_array,cleaned_sig=anc_object.sig_array)
 
         bp_snr_before_dB,bp_snr_after_dB = signal_noise_comparison(
+            #SNR anyalsis on the process
             full_sig=full_signal.sig_array,
             noise=noise.sig_array,
             anc_sig=anc_signal,
@@ -100,11 +107,12 @@ def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Pat
             fmin=fmin,
             fmax=fmax
         )
-
+        #Band powers to progressed anyalsis
         data_bp_before = np.append(data_bp_before, bp_snr_before_dB)
         data_bp_after = np.append(data_bp_after, bp_snr_after_dB)
 
         with open(text_full_path, 'a') as file:
+            #comments
             file.write("based on welch method of PSDs:\n")
             file.write(f"\n+Bp params: {fmin} to {fmax}")
             file.write(f"SNR band_power before ANC {bp_snr_before_dB} dB\n")
@@ -112,6 +120,7 @@ def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Pat
         if(noise!=list_noise[-1]):#works only before the last element    
             sig=get_one_sig(folder_path_sig)#reset the cleaned sig for next iterations    
 
+#statistics on Band Powers
     bandpower_statics(
         band_power_before=data_bp_before,
         band_power_after=data_bp_after,
@@ -121,6 +130,8 @@ def running_NLMS(list_noise: list[SigArgs], sig: SigArgs, folder_total_sigs: Pat
     )
 
 def main():
+  #running the Paths of folders relevant to the process
+  
   root_folder_path=r"C:\Users\galon\Documents\projects\Wavs"
   #USER INPUT of audio recs path
   folder_path_noise=Path(f"{root_folder_path}/Noises_short")

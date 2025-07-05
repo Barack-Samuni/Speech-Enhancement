@@ -44,16 +44,3 @@ def NLMS_calculation(total_sig, noise, fs1, fs2, txt_file:str, filter_len: int =
     
     return e,fs1
 
-
-
-def main():
-    pass
-        # Load input signals
-# total_sig, fs1 = sf.read(r"C:\Users\galon\Documents\projects\Wavs\exp1\full_sig_noise_sig2.wav")
-#     noise, fs2  = sf.read(r"C:\Users\galon\Documents\projects\Wavs\exp1\exp_noise2.wav")
-#     cleaned_sig=NLMS_calculation(total_sig,noise,fs1,fs2)
-#     plot_spectograms_of_all(total_sig,noise,cleaned_sig,fs1)
-    
-
-if __name__=="__main__":
-    main()

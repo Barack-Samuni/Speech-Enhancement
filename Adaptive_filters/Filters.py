@@ -12,7 +12,7 @@ class FilterWrapper:
         """
         self.filter = filter_cls(*args, **kwargs)
 
-    def process(self, input_signal):
+    def process(self, noisy_signal, noise):
         """
         Processes the input signal using the wrapped filter.
 
@@ -22,12 +22,5 @@ class FilterWrapper:
         Returns:
             The filtered signal.
         """
-        # Try common method names
-        if hasattr(self.filter, 'process'):
-            return self.filter.process(input_signal)
-        elif hasattr(self.filter, 'filter'):
-            return self.filter.filter(input_signal)
-        elif hasattr(self.filter, '__call__'):
-            return self.filter(input_signal)
-        else:
-            raise NotImplementedError("The wrapped filter does not have a recognized process method.")
+        return self.filter.process(noisy_signal, noise)
+        

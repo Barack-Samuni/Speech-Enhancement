@@ -41,17 +41,20 @@ class RLSFilter:
         noisy_signal = noisy_signal[:min_len]
         N = len(noisy_signal)
         print("Starting noise cancellation...")
-        pbar = tqdm(total=100)
+        # pbar = tqdm(total=100)
 
         errors = []
-        for i in range(N - self.n_taps + 1):
+        sig = []
+        for i in tqdm(range(N - self.n_taps + 1)):
             x_vec = noisy_signal[i:i+self.n_taps]
             d = noise[i]
             y, e = self.adapt(x_vec, d)
             errors.append(e)
-            pbar.update(i/(N - self.n_taps + 1))
+            sig.append(y)
+            # pbar.update(i/(N - self.n_taps + 1))
 
         err_array = np.array(errors)
+        sig = np.array(object=sig)
 
-        return err_array
+        return sig, err_array
 

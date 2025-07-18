@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 from scipy.signal import stft
 from AdaptiveFilters import RLSFilter
-from SRRLS import SRRLS
+import sounddevice as sd
 
 import warnings
 warnings.simplefilter("error")
